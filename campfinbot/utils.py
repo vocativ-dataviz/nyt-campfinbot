@@ -57,7 +57,7 @@ def load_filings(collection, committees, recent_filings, alert=False):
                                 message += "\n\tDisbursements: %s" % filing['disbursements_total']
 
                             try:
-                                message += "\n\tBurn rate: %s%" % round(filing['bur_rate'], 2)
+                                message += "\n\tBurn rate: %s%" % humanize.intcomma(round(filing['burn_rate'], 2))
                             except:
                                 message += "\n\tBurn rate: %s" % filing['burn_rate']
 
