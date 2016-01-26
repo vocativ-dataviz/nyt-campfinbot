@@ -1,6 +1,13 @@
 import humanize
 
 import campfinbot
+import json
+import requests
+import sys
+import os
+import datetime
+
+import logging
 
 def format_candidate(c):
     """
@@ -10,7 +17,10 @@ def format_candidate(c):
     """
     payload = {}
     payload['campaign_committee'] = {"candidate_name": c['name'], "candidate_id": c['candidate_id'], "committee_name": c['name'] + "'s campaign committee", "committee_id": c["committee_id"]}
-    payload['associated_committees'] = [{"candidate_name": c['name'], "candidate_id": c['candidate_id'], "committee_name": a['committee']['name'], "committee_id": a['committee']['fecid']} for a in c['associated_committees']]
+
+    payload['associated_committees'] = []
+    for a in c['allpacs']:
+        payload['associated_committees'].append({"candidate_name": c['name'], "candidate_id": c['candidate_id'], "committee_name": a['committee_name'], "committee_id": a['fec_id']})
     return payload
 
 def load_committees(collection, committees):
@@ -32,32 +42,60 @@ def load_filings(collection, committees, recent_filings, alert=False):
     """
     messages = []
     for filing in recent_filings:
-        if filing['fec_committee_id'] in committees:
+        if filing['fec_id'] in committees:
             if not collection.find_one({'filing_id': filing['filing_id']}):
-                if filing['form_type'] in campfinbot.ACCEPTABLE_FORMS:
-                    if filing['cash_on_hand']:
-                        collection.insert(filing)
-
-                        if alert:
-                            message = "*%s* has just filed.\n%s" % (filing['committee_name'], filing['fec_uri'])
+                form_type = filing['form_type'].rstrip('HSPAX')
+                if form_type in campfinbot.ACCEPTABLE_FORMS:
+                    collection.insert(filing)
+                    if form_type in campfinbot.ALERT_FORMS and alert and filing['filed_date'] > campfinbot.EARLIEST_ALERT:
+                        message = "*{comm}* has filed a {form_type}".format(comm=filing['committee_name'],
+                                                                                 form_type=filing['form_type'])
+                        if filing['is_amendment']:
+                            message += " AMENDMENT"
+                        
+                        message += " on {date}.\n{url}".format(date=filing['filed_date'], url=filing['source_url'])
+                        if filing['has_cycle_totals']:
+                            try:
+                                message += "\n\tReceipts: $%s" % humanize.intcomma(round(float(filing['period_total_receipts']), 2))
+                            except:
+                                message += "\n\tReceipts: %s" % filing['period_total_receipts']
 
                             try:
-                                message += "\n\tReceipts: $%s" % humanize.intcomma(round(filing['receipts_total'], 2))
+                                message += "\n\tCash on hand: $%s" % humanize.intcomma(round(float(filing['coh_end']), 2))
                             except:
-                                message += "\n\tReceipts: %s" % filing['receipts_total']
+                                message += "\n\tCash on hand: %s" % filing['coh_end']
 
                             try:
-                                message += "\n\tCash on hand: $%s" % humanize.intcomma(round(filing['cash_on_hand'], 2))
+                                message += "\n\tDisbursements: $%s" % humanize.intcomma(round(float(filing['period_total_disbursements']), 2))
                             except:
-                                message += "\n\tCash on hand: %s" % filing['cash_on_hand']
-
+                                message += "\n\tDisbursements: %s" % filing['period_total_disbursements']
+                        
+                        #Kitty wants to know about bernie filings immediately
+                        if filing['fec_id'] in ['C00577130']:
                             try:
-                                message += "\n\tDisbursements: $%s" % humanize.intcomma(round(filing['disbursements_total'], 2))
-                            except:
-                                message += "\n\tDisbursements: %s" % filing['disbursements_total']
+                                kitty_user = os.environ['KITTY']
+                            except KeyError:
+                                message += "\nHEADS UP kitty"
+                            else:
+                                message += "\n HEADS UP {}".format(kitty_user)
 
+                        messages.append(message)
+
+<<<<<<< HEAD
                             message += "\n\n\tBrowse more filings: https://projects.propublica.org/itemizer/"
 
                             messages.append(message)
-
+=======
     return messages
+>>>>>>> 7edc176139da03ab75bd458066d6e1387043046d
+
+def load_json(endpoint, tries=5):
+    i = 0
+    while i < tries:
+        try:
+            return json.loads(requests.get(endpoint).content)['results']
+        except Exception as e:
+            err = e
+        i += 1
+    logging.warning("Failed to load endpoint {tries} times, got error {err}".format(tries=tries, err=err))
+    return []
