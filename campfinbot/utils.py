@@ -59,23 +59,17 @@ def load_filings(collection, committees, recent_filings, alert=False):
                                 message += "\n\tReceipts: $%s" % humanize.intcomma(round(float(filing['period_total_receipts']), 2))
                             except:
                                 message += "\n\tReceipts: %s" % filing['period_total_receipts']
-
                             try:
                                 message += "\n\tCash on hand: $%s" % humanize.intcomma(round(float(filing['coh_end']), 2))
                             except:
                                 message += "\n\tCash on hand: %s" % filing['coh_end']
-
                             try:
                                 message += "\n\tDisbursements: $%s" % humanize.intcomma(round(float(filing['period_total_disbursements']), 2))
                             except:
                                 message += "\n\tDisbursements: %s" % filing['period_total_disbursements']
-
-
-                        messages.append(message)
                         message += "\n\n\tBrowse more filings: https://projects.propublica.org/itemizer/"
-
                         messages.append(message)
-                        return messages
+    return messages
 
 def load_json(endpoint, tries=5):
     i = 0
