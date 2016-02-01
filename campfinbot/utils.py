@@ -69,25 +69,13 @@ def load_filings(collection, committees, recent_filings, alert=False):
                                 message += "\n\tDisbursements: $%s" % humanize.intcomma(round(float(filing['period_total_disbursements']), 2))
                             except:
                                 message += "\n\tDisbursements: %s" % filing['period_total_disbursements']
-                        
-                        #Kitty wants to know about bernie filings immediately
-                        if filing['fec_id'] in ['C00577130']:
-                            try:
-                                kitty_user = os.environ['KITTY']
-                            except KeyError:
-                                message += "\nHEADS UP kitty"
-                            else:
-                                message += "\n HEADS UP {}".format(kitty_user)
+
 
                         messages.append(message)
+                        message += "\n\n\tBrowse more filings: https://projects.propublica.org/itemizer/"
 
-<<<<<<< HEAD
-                            message += "\n\n\tBrowse more filings: https://projects.propublica.org/itemizer/"
-
-                            messages.append(message)
-=======
-    return messages
->>>>>>> 7edc176139da03ab75bd458066d6e1387043046d
+                        messages.append(message)
+                        return messages
 
 def load_json(endpoint, tries=5):
     i = 0
